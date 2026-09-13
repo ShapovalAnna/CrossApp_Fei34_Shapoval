@@ -8,8 +8,16 @@
  **Призначення:** введення обліку видачі примірників книг читачам та контроль повернень.
 
 ## Запуск
+
+chcp 65001
 dotnet build
-dotnet run --project src/Cli
+dotnet src/Cli/bin/Debug/net8.0/Cli.dll
+
+**Або з прапорцем для JSON-виводу:**
+
+dotnet src/Cli/bin/Debug/net8.0/Cli.dll --json
+
+> Примітка: команда `dotnet run --project src/Cli` може не спрацювати на системах з увімкненим Smart App Control (Windows блокує запуск згенерованого Cli.exe як непідписаного файлу). У такому разі використовуйте запуск через .dll, як показано вище.
 
 ## Середовище
 .NET SDK 8.0, Windows 11 x64
