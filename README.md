@@ -13,3 +13,10 @@ dotnet run --project src/Cli
 
 ## Середовище
 .NET SDK 8.0, Windows 11 x64
+
+## Порівняння розміру self-contained публікації
+
+| RID       | Розмір публікації |
+|-----------|-------------------|
+| win-x64   | 70.6 MB           |
+| linux-x64 | 70.5 MB           |
