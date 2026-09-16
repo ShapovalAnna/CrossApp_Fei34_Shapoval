@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 bool jsonMode = args.Contains("--json");
@@ -18,7 +19,12 @@ if (jsonMode)
         Domain = "Предметна область: Бібліотека (Book, BookCopy, Reader, Loan)"
     };
 
-    string json = JsonSerializer.Serialize(info, new JsonSerializerOptions { WriteIndented = true });
+    string json = JsonSerializer.Serialize(info, new JsonSerializerOptions
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    });
+
     Console.WriteLine(json);
 }
 else
