@@ -127,6 +127,8 @@ chmod +x ./Cli
 | win-x64 | self-contained + trimmed + single-file | 12 МБ (1 exe) | ні |
 | linux-x64 | self-contained | 71 МБ | ні |
 
+Framework-dependent — у каталозі лише код застосунку та його залежності, тому він маленький, але на комп'ютері користувача має бути встановлений .NET Runtime потрібної версії. 
+Self-contained — у публікацію додається сам .NET Runtime, тому застосунок працює без встановленого .NET на цільовій машині, але каталог значно більший.
 ## Multi-targeting
 
 Наразі обидва проєкти (`Core` і `Cli`) мають лише
