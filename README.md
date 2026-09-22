@@ -127,7 +127,6 @@ chmod +x ./Cli
 | win-x64 | self-contained + trimmed + single-file | 12 МБ (1 exe) | ні |
 | linux-x64 | self-contained | 71 МБ | ні |
 
-
 ## Multi-targeting
 
 Наразі обидва проєкти (`Core` і `Cli`) мають лише
