@@ -17,11 +17,13 @@ CrossApp/
 ├── .gitignore
 └── src/
     ├── Core/
-    │   ├── Core.csproj          (TargetFrameworks: net8.0;net10.0)
-    │   └── EnvironmentInfo.cs   (EnvironmentReport + EnvironmentInfo, namespace Core)
+    │   ├── Core.csproj              (TargetFrameworks: net8.0;net10.0)
+    │   ├── EnvironmentInfo.cs       (EnvironmentReport + EnvironmentInfo, namespace Core)
+    │   └── Dto/
+    │       └── EnvironmentReportDto.cs  (DTO для JSON-виводу, namespace Core.Dto)
     └── Cli/
-        ├── Cli.csproj           (ProjectReference на Core)
-        └── Program.cs           (лише виклик Core і форматування виводу)
+        ├── Cli.csproj               (ProjectReference на Core; TargetFrameworks: net8.0;net10.0)
+        └── Program.cs               (лише виклик Core і форматування виводу)
 ```
 
 Core — class library, не має точки входу й не запускається самостійно.
@@ -42,26 +44,35 @@ Core — class library, не має точки входу й не запуска
 містить доменної логіки — лише допоміжний код для отримання інформації
 про середовище виконання.
 
-## Запуск
-
-```
-chcp 65001
-dotnet build
-dotnet run --project src/Cli
-dotnet run --project src/Cli -- --json
-```
 ## Перевірка структури (самоперевірка)
 
 ```
+dotnet --list-sdks
+dotnet --info
 dotnet sln list
 type src\Cli\Cli.csproj
 dotnet build src/Core/Core.csproj
 dir src\Core\bin\Debug
 ```
 
+`dotnet --list-sdks` показує встановлені SDK, `dotnet --info` — RID машини.
 `dotnet sln list` показує два проєкти (Cli і Core), `Cli.csproj` містить
 ProjectReference на Core, Core збирається окремо, а в `bin\Debug`
-є два підкаталоги — `net8.0` і `net10.0` (multi-targeting).
+є два підкаталоги — `net8.0` і `net10.0`.
+
+## Запуск
+
+Оскільки Cli має два TFM, для `dotnet run` потрібно вказати `-f`:
+
+```
+chcp 65001
+dotnet build
+dotnet run --project src/Cli -f net8.0
+dotnet run --project src/Cli -f net10.0
+dotnet run --project src/Cli -f net8.0 -- --json
+```
+
+
 
 ## Команди, якими додано Core і посилання
 
@@ -76,18 +87,21 @@ dotnet add src/Cli/Cli.csproj reference src/Core/Core.csproj
 
 ## Публікація
 
+Через multi-targeting у кожній команді publish вказано `-f net8.0`,
+а `-o` задає каталог результату:
+
 ```bash
-dotnet publish src/Cli -c Release -r win-x64 --self-contained true  -o publish/self-contained
-dotnet publish src/Cli -c Release -r win-x64 --self-contained false -o publish/framework-dependent
-dotnet publish src/Cli -c Release -r linux-x64 --self-contained true -o publish/linux-x64
+dotnet publish src/Cli -c Release -f net8.0 -r win-x64 --self-contained true  -o publish/self-contained
+dotnet publish src/Cli -c Release -f net8.0 -r win-x64 --self-contained false -o publish/framework-dependent
+dotnet publish src/Cli -c Release -f net8.0 -r linux-x64 --self-contained true -o publish/linux-x64
 ```
 
 Додатково опубліковано (опційне завдання):
 
 ```bash
-dotnet publish src/Cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/single-file
-dotnet publish src/Cli -c Release -r win-x64 --self-contained true -p:PublishTrimmed=true -o publish/trimmed
-dotnet publish src/Cli -c Release -r win-x64 --self-contained true -p:PublishTrimmed=true -p:PublishSingleFile=true -o publish/trimmed-single-file
+dotnet publish src/Cli -c Release -f net8.0 -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/single-file
+dotnet publish src/Cli -c Release -f net8.0 -r win-x64 --self-contained true -p:PublishTrimmed=true -o publish/trimmed
+dotnet publish src/Cli -c Release -f net8.0 -r win-x64 --self-contained true -p:PublishTrimmed=true -p:PublishSingleFile=true -o publish/trimmed-single-file
 ```
 
 Запуск саме з каталогу publish (не через `dotnet run`):
@@ -127,23 +141,44 @@ chmod +x ./Cli
 | win-x64 | self-contained + trimmed + single-file | 12 МБ (1 exe) | ні |
 | linux-x64 | self-contained | 71 МБ | ні |
 
-Framework-dependent — у каталозі лише код застосунку та його залежності, тому він маленький, але на комп'ютері користувача має бути встановлений .NET Runtime потрібної версії. 
+Framework-dependent — у каталозі лише код застосунку та його залежності, тому він маленький, але на комп'ютері користувача має бути встановлений .NET Runtime потрібної версії.
 Self-contained — у публікацію додається сам .NET Runtime, тому застосунок працює без встановленого .NET на цільовій машині, але каталог значно більший.
+
 ## Multi-targeting
 
-Бібліотека `Core` збирається під дві цільові платформи:
+Проєкти `Core` і `Cli` збираються під дві цільові платформи:
 
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
 
-Після `dotnet build` у `src/Core/bin/Debug/` з'являються два підкаталоги:
-`net8.0` і `net10.0` — проєкт компілюється окремо для кожного TFM.
+Після `dotnet build` у `bin/Debug/` кожного проєкту з'являються два
+підкаталоги: `net8.0` і `net10.0` — проєкт компілюється окремо для кожного TFM.
 
-`Cli` має один TFM (`net8.0`) і під час збірки автоматично використовує
-відповідну збірку `Core` для net8.0. Тому команди `dotnet publish`
-не потребують параметра `-f`.
+У `EnvironmentInfo` є константа `BuildNote`, яка задається директивою
+умовної компіляції, тому вивід відрізняється залежно від TFM:
 
-Встановлені SDK (`dotnet --list-sdks`): 8.0.x, 10.0.x
+```csharp
+#if NET10_0_OR_GREATER
+    private const string BuildNote = "збірка під net10.0";
+#else
+    private const string BuildNote = "збірка під net8.0";
+#endif
+```
+
+```
+dotnet run --project src/Cli -f net8.0    → Збірка : збірка під net8.0
+dotnet run --project src/Cli -f net10.0   → Збірка : збірка під net10.0
+```
+
+Через кілька TFM у Cli команди `dotnet run` і `dotnet publish` потребують
+параметра `-f` (інакше помилка «You must specify a target framework»).
+
+Встановлені SDK (`dotnet --list-sdks`):
+
+```
+8.0.425 [C:\Program Files\dotnet\sdk]
+10.0.401 [C:\Program Files\dotnet\sdk]
+```
 
 ## Середовище
 
-.NET SDK 8.0, Windows 11 x64
+.NET SDK 8.0.425 та 10.0.401, Windows 11 x64
