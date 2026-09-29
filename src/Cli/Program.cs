@@ -1,7 +1,7 @@
 ﻿using Core;
+using Core.Dto;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 EnvironmentReport report = EnvironmentInfo.Collect();
 
@@ -18,7 +18,7 @@ if (jsonMode)
         DetectedRid = report.DetectedRid,
         ReportedRid = report.ReportedRid,
         BaseDirectory = report.BaseDirectory,
-        CurrentDirectory = Environment.CurrentDirectory,
+        CurrentDirectory = report.CurrentDirectory,
         Domain = "Предметна область: Бібліотека (Book, BookCopy, Reader, Loan)"
     };
 
@@ -29,9 +29,7 @@ if (jsonMode)
         TypeInfoResolver = AppJsonContext.Default
     };
 
-    string json = JsonSerializer.Serialize(info, options);
-
-    Console.WriteLine(json);
+    Console.WriteLine(JsonSerializer.Serialize(info, options));
 }
 else
 {
@@ -44,25 +42,7 @@ else
     Console.WriteLine($"RID (визначено): {report.DetectedRid}");
     Console.WriteLine($"RID (від .NET) : {report.ReportedRid}");
     Console.WriteLine($"Каталог застосунку : {report.BaseDirectory}");
-    Console.WriteLine($"Поточний каталог : {Environment.CurrentDirectory}");
+    Console.WriteLine($"Поточний каталог : {report.CurrentDirectory}");
     Console.WriteLine(new string('-', 52));
     Console.WriteLine("Предметна область: Бібліотека (Book, BookCopy, Reader, Loan)");
-}
-
-public class EnvironmentReportDto
-{
-    public string Student { get; set; } = "";
-    public string OsDescription { get; set; } = "";
-    public string Architecture { get; set; } = "";
-    public string Runtime { get; set; } = "";
-    public string DetectedRid { get; set; } = "";
-    public string ReportedRid { get; set; } = "";
-    public string BaseDirectory { get; set; } = "";
-    public string CurrentDirectory { get; set; } = "";
-    public string Domain { get; set; } = "";
-}
-
-[JsonSerializable(typeof(EnvironmentReportDto))]
-internal partial class AppJsonContext : JsonSerializerContext
-{
 }

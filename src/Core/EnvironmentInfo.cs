@@ -8,7 +8,8 @@ public sealed record EnvironmentReport(
     string ProcessArchitecture,
     string DetectedRid,
     string ReportedRid,
-    string BaseDirectory);
+    string BaseDirectory,
+    string CurrentDirectory);
 
 public static class EnvironmentInfo
 {
@@ -18,7 +19,8 @@ public static class EnvironmentInfo
         RuntimeInformation.ProcessArchitecture.ToString(),
         DetectRid(),
         RuntimeInformation.RuntimeIdentifier,
-        AppContext.BaseDirectory);
+        AppContext.BaseDirectory,
+        Environment.CurrentDirectory);
 
     private static string DetectRid()
     {
