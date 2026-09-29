@@ -12,6 +12,7 @@ public class EnvironmentReportDto
     public string ReportedRid { get; set; } = "";
     public string BaseDirectory { get; set; } = "";
     public string CurrentDirectory { get; set; } = "";
+    public string BuildNote { get; set; } = "";
     public string Domain { get; set; } = "";
 }
 

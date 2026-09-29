@@ -19,6 +19,7 @@ if (jsonMode)
         ReportedRid = report.ReportedRid,
         BaseDirectory = report.BaseDirectory,
         CurrentDirectory = report.CurrentDirectory,
+        BuildNote = report.BuildNote,
         Domain = "Предметна область: Бібліотека (Book, BookCopy, Reader, Loan)"
     };
 
@@ -43,6 +44,7 @@ else
     Console.WriteLine($"RID (від .NET) : {report.ReportedRid}");
     Console.WriteLine($"Каталог застосунку : {report.BaseDirectory}");
     Console.WriteLine($"Поточний каталог : {report.CurrentDirectory}");
+    Console.WriteLine($"Збірка : {report.BuildNote}");
     Console.WriteLine(new string('-', 52));
     Console.WriteLine("Предметна область: Бібліотека (Book, BookCopy, Reader, Loan)");
 }
