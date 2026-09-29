@@ -17,7 +17,7 @@ CrossApp/
 ├── .gitignore
 └── src/
     ├── Core/
-    │   ├── Core.csproj
+    │   ├── Core.csproj          (TargetFrameworks: net8.0;net10.0)
     │   └── EnvironmentInfo.cs   (EnvironmentReport + EnvironmentInfo, namespace Core)
     └── Cli/
         ├── Cli.csproj           (ProjectReference на Core)
@@ -50,18 +50,18 @@ dotnet build
 dotnet run --project src/Cli
 dotnet run --project src/Cli -- --json
 ```
-
-**Або через .dll (якщо `dotnet run` заблокує Smart App Control):**
+## Перевірка структури (самоперевірка)
 
 ```
-dotnet src/Cli/bin/Debug/net8.0/Cli.dll
-dotnet src/Cli/bin/Debug/net8.0/Cli.dll --json
+dotnet sln list
+type src\Cli\Cli.csproj
+dotnet build src/Core/Core.csproj
+dir src\Core\bin\Debug
 ```
 
-> Примітка: команда `dotnet run --project src/Cli` (і сам `Cli.exe`) може не
-> спрацювати на системах з увімкненим Smart App Control (Windows блокує
-> запуск непідписаних файлів). У такому разі використовуйте запуск через
-> `.dll`, як показано вище.
+`dotnet sln list` показує два проєкти (Cli і Core), `Cli.csproj` містить
+ProjectReference на Core, Core збирається окремо, а в `bin\Debug`
+є два підкаталоги — `net8.0` і `net10.0` (multi-targeting).
 
 ## Команди, якими додано Core і посилання
 
@@ -77,17 +77,17 @@ dotnet add src/Cli/Cli.csproj reference src/Core/Core.csproj
 ## Публікація
 
 ```bash
-dotnet publish src/Cli -c Release -r win-x64 --self-contained true
-dotnet publish src/Cli -c Release -r win-x64 --self-contained false
-dotnet publish src/Cli -c Release -r linux-x64 --self-contained true
+dotnet publish src/Cli -c Release -r win-x64 --self-contained true  -o publish/self-contained
+dotnet publish src/Cli -c Release -r win-x64 --self-contained false -o publish/framework-dependent
+dotnet publish src/Cli -c Release -r linux-x64 --self-contained true -o publish/linux-x64
 ```
 
 Додатково опубліковано (опційне завдання):
 
 ```bash
-dotnet publish src/Cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
-dotnet publish src/Cli -c Release -r win-x64 --self-contained true -p:PublishTrimmed=true
-dotnet publish src/Cli -c Release -r win-x64 --self-contained true -p:PublishTrimmed=true -p:PublishSingleFile=true
+dotnet publish src/Cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/single-file
+dotnet publish src/Cli -c Release -r win-x64 --self-contained true -p:PublishTrimmed=true -o publish/trimmed
+dotnet publish src/Cli -c Release -r win-x64 --self-contained true -p:PublishTrimmed=true -p:PublishSingleFile=true -o publish/trimmed-single-file
 ```
 
 Запуск саме з каталогу publish (не через `dotnet run`):
@@ -131,11 +131,18 @@ Framework-dependent — у каталозі лише код застосунку
 Self-contained — у публікацію додається сам .NET Runtime, тому застосунок працює без встановленого .NET на цільовій машині, але каталог значно більший.
 ## Multi-targeting
 
-Наразі обидва проєкти (`Core` і `Cli`) мають лише
-`<TargetFramework>net8.0</TargetFramework>`. Multi-targeting
-(`<TargetFrameworks>net8.0;net9.0</TargetFrameworks>`) не застосовувався,
-оскільки на машині встановлений лише .NET SDK 8 (перевірено через
-`dotnet --list-sdks`) — збірка під net9.0 без відповідного SDK неможлива.
+Бібліотека `Core` збирається під дві цільові платформи:
+
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+
+Після `dotnet build` у `src/Core/bin/Debug/` з'являються два підкаталоги:
+`net8.0` і `net10.0` — проєкт компілюється окремо для кожного TFM.
+
+`Cli` має один TFM (`net8.0`) і під час збірки автоматично використовує
+відповідну збірку `Core` для net8.0. Тому команди `dotnet publish`
+не потребують параметра `-f`.
+
+Встановлені SDK (`dotnet --list-sdks`): 8.0.x, 10.0.x
 
 ## Середовище
 
