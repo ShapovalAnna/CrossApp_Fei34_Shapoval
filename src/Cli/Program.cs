@@ -18,6 +18,36 @@ if (!File.Exists(path))
     return 1;
 }
 
+// --- Додаткове завдання: мішаний імпорт запускається окремою командою ---
+// dotnet run --project src/Cli -- data\sample-mixed.csv
+bool isMixedFile = Path.GetFileNameWithoutExtension(path)
+    .Contains("mixed", StringComparison.OrdinalIgnoreCase);
+
+if (isMixedFile)
+{
+    MixedImportResult mixed = MixedCsvImporter.Load(path);
+
+    Console.WriteLine("Додаткове завдання: мішаний імпорт книг і читачів за префіксом");
+    Console.WriteLine(new string('-', 52));
+
+    Console.WriteLine($"Книг: {mixed.Books.Count}");
+    foreach (BookDto b in mixed.Books)
+        Console.WriteLine($"  B {b.Id,-6} {b.Isbn,-18} {b.Title,-30} {b.Year,5}");
+
+    Console.WriteLine($"Читачів: {mixed.Readers.Count}");
+    foreach (ReaderDto r in mixed.Readers)
+        Console.WriteLine($"  R {r.Id,-6} {r.FullName}");
+
+    if (mixed.Errors.Count > 0)
+    {
+        Console.WriteLine($"Помилок: {mixed.Errors.Count}");
+        foreach (string e in mixed.Errors)
+            Console.WriteLine($"  ! {e}");
+    }
+
+    return 0;
+}
+
 ImportResult<BookDto> result = Path.GetExtension(path).ToLowerInvariant() switch
 {
     ".csv" => BookCsvImporter.Load(path),
@@ -84,9 +114,5 @@ if (result.Errors.Count > 0)
 int total = result.Items.Count + result.Errors.Count;
 double errorRate = total == 0 ? 0 : (double)result.Errors.Count / total * 100;
 Console.WriteLine($"Усього: {total}, прийнято: {result.Items.Count}, пропущено: {result.Errors.Count}, % помилок: {errorRate:F1}%");
-
-// --- Додаткове завдання: мішаний імпорт книг і читачів за префіксом ---
-MixedImportResult mixed = MixedCsvImporter.Load(Path.Combine("data", "sample-mixed.csv"));
-Console.WriteLine($"Мішаний імпорт — книг: {mixed.Books.Count}, читачів: {mixed.Readers.Count}, помилок: {mixed.Errors.Count}");
 
 return 0;
