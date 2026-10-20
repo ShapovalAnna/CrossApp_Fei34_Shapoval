@@ -97,6 +97,29 @@ echo $LASTEXITCODE
 - Статистика імпорту (усього / прийнято / пропущено / % помилок) одним
   рядком у виводі Cli.
   
+  ## Лабораторна робота 4 — доменна модель (BookCopy, Loan)
+
+### Інваріанти
+
+| Сутність / метод | Інваріант | Виняток при порушенні |
+|---|---|---|
+| `BookCopy.Create(id, isbn)` | `Id` та `Isbn` не можуть бути порожніми | `ArgumentException` |
+| `BookCopy.Issue()` | не можна видати примірник, який вже видано | `InvalidOperationException` |
+| `BookCopy.Return()` | не можна повернути примірник, який не видано | `InvalidOperationException` |
+| `Loan.Open(...)` | примірник на момент видачі має бути вільним (делегує перевірку в `BookCopy.Issue()`) | `InvalidOperationException` |
+| `Loan.Close(returnedOn, copy)` | дата повернення не може бути раніше дати видачі | `ArgumentException` |
+| `Loan.Close(...)` → `EnsureTransition` | дозволений лише перехід статусу `Open → Closed`; `Closed → Closed` заборонено | `InvalidOperationException` |
+| `LoanLimitPolicy.OpenWithLimit(...)` | в одного читача не може бути більше **5** активних (відкритих) видач одночасно | `InvalidOperationException` |
+
+### Команди для запуску
+```bash
+# лаб. 4 (сценарій успіху + 4 порушення інваріантів)
+dotnet run --project src/Cli -- data\sample.csv
+# Те саме, але з JSON-файлом 
+dotnet run --project src/Cli -- data\sample.json
+# Змішаний файл (демонструє розпізнавання за префіксом книги/читача)
+dotnet run --project src/Cli -- data\sample-mixed.csv
+
 ## Команди, якими додано Core і посилання
 
 ```bash
@@ -119,7 +142,7 @@ dotnet publish src/Cli -c Release -f net8.0 -r win-x64 --self-contained false -o
 dotnet publish src/Cli -c Release -f net8.0 -r linux-x64 --self-contained true -o publish/linux-x64
 ```
 
-Додатково опубліковано (опційне завдання):
+Додатково опубліковано:
 
 ```bash
 dotnet publish src/Cli -c Release -f net8.0 -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/single-file
