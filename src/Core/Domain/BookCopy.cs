@@ -6,8 +6,8 @@ public sealed class BookCopy
 {
     public string Id { get; }
     public string Isbn { get; }
-    public bool IsIssued { get; private set; }
-
+    public bool IsIssued { get; private set; } //приклад інкапсуляції
+//приватний конструктор
     private BookCopy(string id, string isbn, bool isIssued)
     {
         Id = id;
@@ -16,6 +16,7 @@ public sealed class BookCopy
     }
 
     //  спосіб створити примірник з перевірками
+    //Фабричний метод
     public static BookCopy Create(string id, string isbn)
     {
         if (string.IsNullOrWhiteSpace(id))
@@ -46,7 +47,7 @@ public sealed class BookCopy
 
     public static BookCopy FromDto(BookCopyDto dto)
     {
-        BookCopy copy = Create(dto.Id, dto.Isbn);
+        BookCopy copy = Create(dto.Id, dto.Isbn); //викликає кріейт проходить перевірки ті самі
         if (dto.IsIssued)
             copy.Issue();
         return copy;

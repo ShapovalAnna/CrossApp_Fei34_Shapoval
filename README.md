@@ -166,6 +166,41 @@ dotnet publish src/Cli -c Release -f net8.0 -r win-x64 --self-contained true -p:
 ```bash
 du -sh <шлях publish>
 ```
+## Лабораторна 5: сервісний шар, два сховища, ручний DI
+
+### Домен і контракт
+Головна сутність — `BookCopy` (примірник книги). Контракт `IBookCopyStore` (`Core/Abstractions`) має 5 методів:
+- `List()` повертає `IReadOnlyList`, щоб зовнішній код не міняв сховище в обхід `Add/Update/Remove`;
+- `GetById(id)` повертає `BookCopy?`, бо запису може не бути;
+- `Add(item)`, `Update(item)`, `Remove(id)`.
+
+В інтерфейсі немає нічого «про файл» (`Save`, `Flush`): контракт містить лише операції, потрібні сервісу.
+Бізнес-операції у `LendingService`: `AddBook`, `IssueCopy`, `ReturnCopy`. Інваріанти перевіряє сама сутність
+(`BookCopy.Create/Issue/Return`), сховище лише гарантує унікальність id.
+
+### Дві реалізації
+| | InMemoryBookCopyStore | FileBookCopyStore |
+|---|---|---|
+| Де дані | `Dictionary` у пам'яті | кеш у пам'яті + JSON-файл |
+| Шлях | — | `data/catalog.json` біля виконуваного файлу (`bin/Debug/net8.0/data/`) |
+| Формат | — | JSON-масив `BookCopyDto` з відступами |
+| Життя даних | зникають після виходу | зберігаються між запусками |
+| Механіка | початкові дані з `SampleData` | дозавантаження при першому зверненні, запис на диск після кожної зміни (`Flush`) |
+
+На диск іде DTO (`BookCopyDto`), а мапінг робить `BookCopy.ToDto()/FromDto()`: формат файлу не диктує форму домену.
+
+### Схема залежностей
+`Cli → LendingService → IBookCopyStore → InMemoryBookCopyStore | FileBookCopyStore`
+
+### Запуск і вивід
+```
+dotnet run --project src/Cli            # Сховище: InMemoryBookCopyStore
+dotnet run --project src/Cli -- --file  # Сховище: FileBookCopyStore
+```
+
+### Без DI-контейнера
+`Microsoft.Extensions.DependencyInjection` не підключено: залежності передаються вручну через конструктор у `Program.cs`.
+Контейнер з'явиться на тижні 10 разом з Api.
 
 ### Перевірка linux-x64 публікації в контейнері без .NET (опційне завдання)
 
