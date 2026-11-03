@@ -4,18 +4,18 @@ using Core.Abstractions;
 using Core.Domain;
 
 namespace Core.Storage;
-
+//конструктор який  всередині тримає інше сховище (_inner)
 public sealed class CachingBookCopyStore(IBookCopyStore inner) : IBookCopyStore
 {
-    private readonly IBookCopyStore _inner = inner ?? throw new ArgumentNullException(nameof(inner));
-    private readonly Dictionary<string, BookCopy?> _byId = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IBookCopyStore _inner = inner ?? throw new ArgumentNullException(nameof(inner)); //не дозволяє створити декоратор без справжнього сховища.
+    private readonly Dictionary<string, BookCopy?> _byId = new(StringComparer.OrdinalIgnoreCase); 
     private IReadOnlyList<BookCopy>? _list;
 
     public int Hits { get; private set; }
     public int Misses { get; private set; }
 
-    public IReadOnlyList<BookCopy> List()
-    {
+    public IReadOnlyList<BookCopy> List() //дивиться у власний кеш
+    { //Знайшли, то це влучання (Hits++), і внутрішнє сховище не чіпається. Не знайшли, то промах (Misses++): питається _inner і запам'ятовується відповідь.
         if (_list is not null) { Hits++; return _list; }
         Misses++;
         return _list = _inner.List();

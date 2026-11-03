@@ -1,5 +1,5 @@
 using Core.Domain;
-
+//початкові дані
 namespace Core;
 
 public static class SampleData

@@ -226,10 +226,10 @@ Console.WriteLine("=== Лабораторна 5: сервісний шар, дв
 
 // Composition root: сховище створила фабрика (Cli/StoreFactory.cs),
 // тут його обгортає декоратор-кеш, а сервіс бачить лише інтерфейс
-var cache = new CachingBookCopyStore(inner);
+var cache = new CachingBookCopyStore(inner);// обгортка
 IBookCopyStore store = cache;
-
-var service = new LendingService(store);
+//Dependency Injection (DI)
+var service = new LendingService(store); // зв'язок: сервіс ← сховище
 Console.WriteLine($"Сховище: {cache.GetType().Name} → {inner.GetType().Name}");
 
 Console.WriteLine();
