@@ -8,6 +8,7 @@ using Core.Abstractions;
 using Core.Storage;
 using Core.Services;
 using Cli;
+using Core.Events;
 
 // ============================================================
 // Аргументи командного рядка
@@ -256,18 +257,76 @@ catch (InvalidOperationException ex) { Console.WriteLine($"  Немає запи
 
 try { store.Add(created); }
 catch (InvalidOperationException ex) { Console.WriteLine($"  Дубль id: {ex.Message}"); }
-
+//друге додаткове
 Console.WriteLine();
 Console.WriteLine("--- Сценарій 5: пошук за умовою (Func) ---");
-var issuedNow = service.Search(x => x.IsIssued);
+var issuedNow = service.Search(x => x.IsIssued); //чи примірник вже виданий 
 Console.WriteLine($"Видані зараз: {issuedNow.Count}");
 foreach (var item in issuedNow)
     Console.WriteLine($"  {item}");
 
 string sampleIsbn = "978-966-03-5548-1";
-Console.WriteLine($"З ISBN {sampleIsbn}: {service.Search(x => x.Isbn == sampleIsbn).Count}");
+Console.WriteLine($"З ISBN {sampleIsbn}: {service.Search(x => x.Isbn == sampleIsbn).Count}"); //чи код книжк збігається
 
 Console.WriteLine();
 Console.WriteLine($"--- Кеш: влучань {cache.Hits}, промахів {cache.Misses} ---");
 
+// ============================================================
+// ЛАБ 6: доменні події, делегати Action/Func, лямбди
+// ============================================================
+Console.WriteLine();
+Console.WriteLine("=== Лабораторна 6: доменні події, делегати, лямбди ===");
+
+// ЛАБ 6 (крок 3): шлях до лог-файлу будуємо через Path.Combine, каталог створюємо кодом
+var logPath = Path.Combine(AppContext.BaseDirectory, "logs", "app.log");
+Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+
+// ЛАБ 6 (крок 3): перший підписник, локальний метод.
+// Саме метод (а не лямбда), щоб потім можна було відписатися через -=.
+// Уся робота з консоллю і файлом тут, у Cli. У Core цього немає.
+void OnLendingChanged(object? sender, LendingChangedEventArgs e)
+{
+    var details = e.Kind == LendingChangeKind.CopyIssued
+        ? $"видано читачу {e.ReaderId} до {e.DueDate:dd.MM.yyyy}"
+        : "";
+    var line = $"{e.At:HH:mm:ss} {e.Kind,-12} {e.CopyId} {details}".TrimEnd();
+    Console.WriteLine(line);                                          // у консоль
+    File.AppendAllText(logPath, line + Environment.NewLine);          // у файл logs/app.log
+}
+service.Changed += OnLendingChanged;   // підписка
+
+// ЛАБ 6 (крок 4): другий підписник, лямбда із замиканням над локальною змінною changes.
+// Обидва підписники отримують кожну подію по черзі, в порядку підписки.
+int changes = 0;
+service.Changed += (_, _) => changes++;
+
+// ЛАБ 6 (крок 5): сценарій. Дві зміни, обидва підписники реагують.
+Console.WriteLine();
+Console.WriteLine("--- Лаб 6, сценарій 1: зміни → події ---");
+var copy6 = service.AddBook("978-966-03-5548-1");
+service.IssueCopy(copy6.Id, "R-007", DateOnly.FromDateTime(DateTime.Today.AddDays(14)));
+Console.WriteLine($"Подій отримано: {changes}");      // очікуємо 2
+
+// ЛАБ 6 (крок 6): сценарій відмови. Виняток є, події немає (рядка події в консолі не буде, лічильник не зросте).
+Console.WriteLine();
+Console.WriteLine("--- Лаб 6, сценарій 2: відмова (події не буде) ---");
+try { service.IssueCopy("NOPE", "R-007", DateOnly.FromDateTime(DateTime.Today)); }
+catch (InvalidOperationException ex) { Console.WriteLine($"  Помилка: {ex.Message}"); }
+Console.WriteLine($"Подій отримано: {changes}");      // усе ще 2
+
+// ЛАБ 6 (крок 5): відписка. Обробник мовчить, а лямбда-лічильник усе ще працює.
+Console.WriteLine();
+Console.WriteLine("--- Лаб 6, сценарій 3: після відписки (-=) ---");
+service.Changed -= OnLendingChanged;
+service.ReturnCopy(copy6.Id);                         // тиха операція: у консолі й файлі нічого
+Console.WriteLine($"Подій отримано: {changes}");      // 3 (+1 лише від лямбди-лічильника)
+
+// ЛАБ 6 (крок 7): Func замість події, бо тут потрібно отримати значення назад
+Console.WriteLine();
+Console.WriteLine("--- Лаб 6, сценарій 4: Func замість події (пошук) ---");
+var issuedList = service.Search(x => x.IsIssued);
+Console.WriteLine($"Видані зараз: {issuedList.Count}");
+foreach (var item in issuedList)
+    Console.WriteLine($"  {item}");
+    
 return 0;

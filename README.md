@@ -197,7 +197,62 @@ du -sh <шлях publish>
 dotnet run --project src/Cli            # Сховище: InMemoryBookCopyStore
 dotnet run --project src/Cli -- --file  # Сховище: FileBookCopyStore
 ```
+## Лабораторна 6: доменні події, делегати Action/Func, лямбди
 
+### Що змінено
+Сервіс `LendingService` тепер сам повідомляє про зміни стану подією, а що з цим робити, вирішує зовнішній код.
+У `Core` немає ні `Console`, ні роботи з файлами логів.
+
+| Файл | Що там |
+|---|---|
+| `Core/Events/LendingChangeKind.cs` | `enum`: `BookAdded`, `CopyIssued`, `CopyReturned` |
+| `Core/Events/LendingChangedEventArgs.cs` | дані події: `CopyId`, `Kind`, `ReaderId`, `DueDate`, `At` |
+| `Core/Services/LendingService.cs` | `event EventHandler<LendingChangedEventArgs>? Changed` і приватний `OnChanged` |
+| `Cli/Program.cs` | підписка, відписка, лямбда-лічильник, лог у `logs/app.log` |
+
+### Які зміни стану стали подіями
+- `AddBook` → `BookAdded`;
+- `IssueCopy` → `CopyIssued` (з `ReaderId` і `DueDate`);
+- `ReturnCopy` → `CopyReturned`.
+
+Подія піднімається лише після успішної зміни (`_store.Add/Update`). Якщо сутність кидає виняток через порушений
+інваріант, повідомлення немає.
+
+### Підписники
+1. `OnLendingChanged` — локальний метод у `Program.cs`: друкує рядок у консоль і дописує його у `logs/app.log`.
+   Це іменований метод, щоб можна було відписатися через `-=`.
+2. Лямбда-лічильник `(_, _) => changes++` із замиканням над локальною змінною `changes`.
+
+На тижні 10 підписником стане логер проєкту Api, на тижні 12 — компонент Blazor, який оновлює таблицю.
+Змін у `Core` для цього не потрібно.
+
+### Func замість події
+`LendingService.Search(Func<BookCopy, bool> predicate)` використовується там, де треба отримати значення назад
+(список), а подія призначена лише для сповіщення «щось сталося».
+
+### Запуск
+```
+dotnet run --project src/Cli
+```
+Лог-файл створюється кодом через `Path.Combine(AppContext.BaseDirectory, "logs", "app.log")`
+(`src/Cli/bin/Debug/net8.0/logs/app.log`).
+
+Фрагмент виводу:
+```
+18:16:40 BookAdded    19549ae0
+18:16:40 CopyIssued   19549ae0 видано читачу R-007 до 22.11.2026
+Подій отримано: 2
+  Помилка: Немає запису з id=NOPE.     (події немає, лічильник не змінився)
+Подій отримано: 2
+Подій отримано: 3                      (після -= консоль мовчить, +1 лише від лямбди)
+```
+У `logs/app.log` лише перші два рядки; операція після відписки в лог не потрапляє.
+
+### Чому подія, а не прямий виклик логера
+1. `Core` не залежить від консолі й файлової системи, тому його можна використати в Api і Blazor без змін.
+2. Підписників можна додавати і прибирати, не змінюючи `Core`; тест може підписатися на подію і перевірити, що
+   повідомлення сформовано, не читаючи консоль чи файл.
+   
 ### Без DI-контейнера
 `Microsoft.Extensions.DependencyInjection` не підключено: залежності передаються вручну через конструктор у `Program.cs`.
 Контейнер з'явиться на тижні 10 разом з Api.
