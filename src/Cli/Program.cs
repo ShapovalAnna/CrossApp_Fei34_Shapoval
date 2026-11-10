@@ -277,12 +277,12 @@ Console.WriteLine($"--- Кеш: влучань {cache.Hits}, промахів {c
 Console.WriteLine();
 Console.WriteLine("=== Лабораторна 6: доменні події, делегати, лямбди ===");
 
-// ЛАБ 6 (крок 3): шлях до лог-файлу будуємо через Path.Combine, каталог створюємо кодом
+// ЛАБ 6 шлях до лог-файлу будуємо через Path.Combine, каталог створюємо кодом
 var logPath = Path.Combine(AppContext.BaseDirectory, "logs", "app.log");
 Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
 
-// ЛАБ 6 (крок 3): перший підписник, локальний метод.
-// Саме метод (а не лямбда), щоб потім можна було відписатися через -=.
+// ЛАБ 6 перший підписник, локальний метод.
+// Саме метод не лямбда, щоб потім можна було відписатися через -=.
 // Уся робота з консоллю і файлом тут, у Cli. У Core цього немає.
 void OnLendingChanged(object? sender, LendingChangedEventArgs e)
 {
@@ -295,19 +295,19 @@ void OnLendingChanged(object? sender, LendingChangedEventArgs e)
 }
 service.Changed += OnLendingChanged;   // підписка
 
-// ЛАБ 6 (крок 4): другий підписник, лямбда із замиканням над локальною змінною changes.
+// ЛАБ 6 другий підписник, лямбда із замиканням над локальною змінною changes.
 // Обидва підписники отримують кожну подію по черзі, в порядку підписки.
 int changes = 0;
 service.Changed += (_, _) => changes++;
 
-// ЛАБ 6 (крок 5): сценарій. Дві зміни, обидва підписники реагують.
+// ЛАБ 6 сценарій. Дві зміни, обидва підписники реагують.
 Console.WriteLine();
 Console.WriteLine("--- Лаб 6, сценарій 1: зміни → події ---");
 var copy6 = service.AddBook("978-966-03-5548-1");
 service.IssueCopy(copy6.Id, "R-007", DateOnly.FromDateTime(DateTime.Today.AddDays(14)));
-Console.WriteLine($"Подій отримано: {changes}");      // очікуємо 2
+Console.WriteLine($"Подій отримано: {changes}");      // очік. 2
 
-// ЛАБ 6 (крок 6): сценарій відмови. Виняток є, події немає (рядка події в консолі не буде, лічильник не зросте).
+// ЛАБ 6 сценарій відмови. Виняток є, події немає (рядка події в консолі не буде, лічильник не зросте).
 Console.WriteLine();
 Console.WriteLine("--- Лаб 6, сценарій 2: відмова (події не буде) ---");
 try { service.IssueCopy("NOPE", "R-007", DateOnly.FromDateTime(DateTime.Today)); }
@@ -318,15 +318,49 @@ Console.WriteLine($"Подій отримано: {changes}");      // усе щ�
 Console.WriteLine();
 Console.WriteLine("--- Лаб 6, сценарій 3: після відписки (-=) ---");
 service.Changed -= OnLendingChanged;
-service.ReturnCopy(copy6.Id);                         // тиха операція: у консолі й файлі нічого
+service.ReturnCopy(copy6.Id);                         // тиха операція
 Console.WriteLine($"Подій отримано: {changes}");      // 3 (+1 лише від лямбди-лічильника)
 
-// ЛАБ 6 (крок 7): Func замість події, бо тут потрібно отримати значення назад
+// ЛАБ 6 ф замість п, бо тут треба отримати значення назад
 Console.WriteLine();
 Console.WriteLine("--- Лаб 6, сценарій 4: Func замість події (пошук) ---");
 var issuedList = service.Search(x => x.IsIssued);
 Console.WriteLine($"Видані зараз: {issuedList.Count}");
 foreach (var item in issuedList)
     Console.WriteLine($"  {item}");
+// ============================================================
+// ЛАБ 6, додаткове 1: INotificationSink замість події (ручний DI)
+// ============================================================
+Console.WriteLine();
+Console.WriteLine("=== Лаб 6, додаткове 1: INotificationSink (ручний DI) ===");
+
+var sinkLogPath = Path.Combine(AppContext.BaseDirectory, "logs", "sink.log");
+if (File.Exists(sinkLogPath)) File.Delete(sinkLogPath);   // щоб кожен запуск був чистий
+
+INotificationSink[] sinks = [new ConsoleSink(), new FileSink(sinkLogPath)];
+foreach (var sink in sinks)
+{
+    Console.WriteLine($"--- {sink.GetType().Name} ---");
+    // окремий сервіс з окремим сховищем: канал передається через конструктор
+    var sinkService = new LendingService(new InMemoryBookCopyStore(), sink);
+    var demoCopy = sinkService.AddBook("978-966-03-5548-1");
+    sinkService.IssueCopy(demoCopy.Id, "R-007", DateOnly.FromDateTime(DateTime.Today.AddDays(14)));
+    sinkService.ReturnCopy(demoCopy.Id);
+}
+foreach (var fileLine in File.ReadAllLines(sinkLogPath))
+    Console.WriteLine($"  [з файлу sink.log] {fileLine}");
     
+// ============================================================
+// ЛАБ 6, додаткове 2: Action<string> як параметр методу імпорту
+// ============================================================
+Console.WriteLine();
+Console.WriteLine("=== Лаб 6, додаткове 2: Action<string> у методі імпорту ===");
+
+int skippedCount = 0;
+var csvResult = BookCsvImporter.Load(Path.Combine("data", "sample.csv"), skippedMsg =>
+{
+    skippedCount++;
+    Console.WriteLine($"  пропущено: {skippedMsg}");
+});
+Console.WriteLine($"Імпортовано: {csvResult.Items.Count}, пропущено: {skippedCount}");
 return 0;

@@ -8,7 +8,8 @@ public static class BookCsvImporter
     // Роздільник — крапка з комою: не конфліктує з комою в назвах книг.
     private const char Separator = ';';
 
-    public static ImportResult<BookDto> Load(string path)
+       // ЛАБ 6, додаткове 2: onSkipped отримує текст про кожен пропущений рядок
+    public static ImportResult<BookDto> Load(string path, Action<string>? onSkipped = null)
     {
         var items = new List<BookDto>();
         var errors = new List<string>();
@@ -33,7 +34,9 @@ public static class BookCsvImporter
                     break;
 
                 case ParseFailed failed:
-                    errors.Add($"рядок {number}: {failed.Reason}");
+                    string message = $"рядок {number}: {failed.Reason}";
+                    errors.Add(message);
+                    onSkipped?.Invoke(message);   // ЛАБ 6, додаткове 2: повідомили викликача
                     break;
             }
         }

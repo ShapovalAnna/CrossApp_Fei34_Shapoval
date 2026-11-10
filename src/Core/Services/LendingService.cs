@@ -4,21 +4,28 @@ using Core.Events; // ЛАБ 6: типи події (LendingChangeKind, LendingC
 //бізнес-операції
 namespace Core.Services;
 //конструктор
-public sealed class LendingService(IBookCopyStore store) //Dependency Inversion (DIP) (LendingService і обидва сховища залежать від IBookCopyStore)
+public sealed class LendingService(IBookCopyStore store, INotificationSink? sink = null) //Dependency Inversion (DIP) (LendingService і обидва сховища залежать від IBookCopyStore)
 {
     //забороняє передавати налл
     private readonly IBookCopyStore _store = store ?? throw new ArgumentNullException(nameof(store));
+    // ЛАБ 6, додаткове 1: канал сповіщення (може бути null, тоді сповіщень через нього немає)
+    private readonly INotificationSink? _sink = sink;
+    // подія. Сервіс лише повідомляє щось сталося, а що з цим робити, вирішують підписники (Cli, пізніше Api і Blazor).
+    public event EventHandler<LendingChangedEventArgs>? Changed; 
 
-    // ЛАБ 6: подія. Сервіс лише повідомляє «щось сталося», а що з цим робити, вирішують підписники (Cli, пізніше Api і Blazor).
-    // Слово event: ззовні можна тільки += і -=, викликати подію може лише цей клас.
-    public event EventHandler<LendingChangedEventArgs>? Changed;
-
-    // ЛАБ 6: єдине місце, де піднімається подія.
-    // ?. означає: якщо підписників немає (Changed == null), нічого не робимо.
-    private void OnChanged(string copyId, LendingChangeKind kind,
-                           string? readerId = null, DateOnly? dueDate = null) =>
+    // єдине місце, де піднімається подія.
+        private void OnChanged(string copyId, LendingChangeKind kind,
+                           string? readerId = null, DateOnly? dueDate = null)
+    {
+        // варіант 1: подія (підписників може бути багато, вони підключаються самі)
         Changed?.Invoke(this, new LendingChangedEventArgs(copyId, kind, readerId, dueDate));
 
+        // варіант 2 (ЛАБ 6, додаткове 1): інтерфейс, переданий через конструктор
+        var text = kind == LendingChangeKind.CopyIssued
+            ? $"{kind} {copyId}: читач {readerId}, до {dueDate:dd.MM.yyyy}"
+            : $"{kind} {copyId}";
+        _sink?.Notify(text);
+    }
 //AddBook(isbn). Генерує короткий id. створює примірник через BookCopy.Create (там перевіряється ISBN) і додає в сховище.
     public BookCopy AddBook(string isbn)
     {
@@ -51,8 +58,8 @@ public sealed class LendingService(IBookCopyStore store) //Dependency Inversion 
     public BookCopy? Find(string id) => _store.GetById(id);
 
     //лаб5 друге додаткове Пошук з параметром
-    //Бере List() і відфільтровує за умовою, яку передано лямбдою.
-    // ЛАБ 6 (крок 7): це і є «Func замість події», бо тут потрібно повернути значення
+    //Бере List() і відфільтровує за умовою, яку передано лямбдою
+    // ЛАБ 6 (крок 7): Func замість події, бо тут треба повернути значення
     public IReadOnlyList<BookCopy> Search(Func<BookCopy, bool> predicate)
     {
         ArgumentNullException.ThrowIfNull(predicate);
