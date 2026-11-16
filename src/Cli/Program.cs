@@ -14,7 +14,14 @@ using Core.Events;
 // Аргументи командного рядка
 // ============================================================
 IBookCopyStore inner = StoreFactory.Create(args);  // лаб. 5: має йти ДО очищення args
-args = args.Where(a => a != "--file").ToArray();   // решта коду не бачить --file
+args = args.Except(["--file"]).ToArray();           // решта коду не бачить --file
+// ============================================================
+// ЛАБ 7: підкоманди звітів (report-...). Якщо вказано звіт, виконуємо його і виходимо.
+// Без report-... програма працює, як у лабах 3-6.
+// ============================================================
+var reportCommand = args.FirstOrDefault(a => a.StartsWith("report-", StringComparison.Ordinal));
+if (reportCommand is not null)
+    return ReportCommands.Run(reportCommand, inner.List());
 
 // ============================================================
 // Лабораторна 3: імпорт файлів (без змін від попередньої версії)
